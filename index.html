@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TempEmail - Correos Temporales</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: #2a2a3a;
+    --green: #00e5a0;
+    --green2: #00b37d;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+    --red: #ff4d6d;
+    --yellow: #ffd166;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 22px; font-weight: 700; }
+  .logo span { color: var(--green); }
+  .logo-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+
+  .hero { text-align: center; margin-bottom: 2.5rem; }
+  .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+  .hero h1 span { color: var(--green); }
+  .hero p { color: var(--muted); font-size: 15px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; }
+
+  .duration-label { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .durations { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .dur-btn { padding: 8px 16px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .dur-btn:hover { border-color: var(--green); color: var(--green); }
+  .dur-btn.active { border-color: var(--green); background: rgba(0,229,160,0.1); color: var(--green); font-weight: 600; }
+
+  .create-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--green); color: #0a0a0f; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .create-btn:hover { background: var(--green2); }
+  .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .email-display { display: none; }
+  .email-display.show { display: block; }
+  .email-addr-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .email-addr { font-size: 18px; font-weight: 600; flex: 1; word-break: break-all; color: var(--green); }
+  .copy-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .copy-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .expiry { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-bottom: 1rem; }
+  .expiry-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .inbox-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .inbox-title { font-size: 15px; font-weight: 600; }
+  .refresh-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .refresh-btn:hover { color: var(--text); border-color: var(--text); }
+
+  .inbox { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .inbox-empty { padding: 3rem; text-align: center; color: var(--muted); font-size: 14px; }
+  .inbox-empty .ico { font-size: 36px; margin-bottom: 12px; }
+
+  .msg-item { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .msg-item:last-child { border-bottom: none; }
+  .msg-item:hover { background: var(--surface2); }
+  .msg-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .msg-from { font-size: 14px; font-weight: 600; }
+  .msg-date { font-size: 12px; color: var(--muted); }
+  .msg-subject { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .msg-view { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem; }
+  .msg-view-subject { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .msg-view-meta { font-size: 12px; color: var(--muted); margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .msg-view-body { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; color: var(--text); }
+  .back-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit; margin-bottom: 12px; transition: all 0.15s; }
+  .back-btn:hover { color: var(--text); }
+
+  .badge { background: rgba(0,229,160,0.15); color: var(--green); font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 12px; }
+  .delete-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,77,109,0.3); background: transparent; color: var(--red); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .delete-btn:hover { background: rgba(255,77,109,0.1); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">temp<span>email</span></div>
+    <div class="logo-sub">correos temporales reales</div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="hero">
+    <h1>Correos <span>Temporales</span></h1>
+    <p>Crea un correo temporal real que dure lo que tú necesites</p>
+  </div>
+
+  <div class="card" id="createCard">
+    <div class="duration-label">¿Cuánto tiempo quieres que dure?</div>
+    <div class="durations">
+      <button class="dur-btn" onclick="selectDuration('1h')">1 hora</button>
+      <button class="dur-btn active" onclick="selectDuration('1d')">1 día</button>
+      <button class="dur-btn" onclick="selectDuration('1w')">1 semana</button>
+      <button class="dur-btn" onclick="selectDuration('1m')">1 mes</button>
+      <button class="dur-btn" onclick="selectDuration('6m')">6 meses</button>
+    </div>
+    <button class="create-btn" id="createBtn" onclick="createEmail()">Crear correo temporal</button>
+  </div>
+
+  <div class="email-display" id="emailDisplay">
+    <div class="card">
+      <div class="email-addr-box">
+        <div class="email-addr" id="emailAddr">—</div>
+        <button class="copy-btn" onclick="copyEmail()">Copiar</button>
+      </div>
+      <div class="expiry">
+        <span class="expiry-dot"></span>
+        <span id="expiryText">Activo</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="create-btn" style="flex:1" onclick="showCreate()">+ Nuevo correo</button>
+        <button class="delete-btn" onclick="deleteAccount()">Eliminar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="inbox-header">
+        <span class="inbox-title">Bandeja de entrada <span class="badge" id="msgCount">0</span></span>
+        <button class="refresh-btn" onclick="loadMessages()">↻ Actualizar</button>
+      </div>
+      <div class="inbox" id="inbox">
+        <div class="inbox-empty">
+          <div class="ico">✉</div>
+          <div>Esperando mensajes...</div>
+        </div>
+      </div>
+      <div id="msgView" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">tempemail25.chickenkiller.com — todos los correos se eliminan automáticamente al expirar</div>
+
+<script>
+  // CAMBIA ESTO POR LA URL DE TU BACKEND EN RENDER
+  const API = 'https://TU-BACKEND.onrender.com';
+
+  let selectedDuration = '1d';
+  let currentToken = null;
+  let messages = [];
+  let pollingInterval = null;
+
+  function selectDuration(d) {
+    selectedDuration = d;
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  async function createEmail() {
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creando...';
+
+    try {
+      const res = await fetch(`${API}/api/create`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({duration: selectedDuration})
+      });
+      const data = await res.json();
+
+      currentToken = data.token;
+      localStorage.setItem('tempemail_token', data.token);
+
+      document.getElementById('emailAddr').textContent = data.email;
+      document.getElementById('expiryText').textContent = `Expira: ${formatDate(data.expires_at)}`;
+      document.getElementById('createCard').style.display = 'none';
+      document.getElementById('emailDisplay').classList.add('show');
+
+      loadMessages();
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(loadMessages, 15000);
+    } catch(e) {
+      alert('Error al crear el correo. Verifica que el backend esté activo.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Crear correo temporal';
+  }
+
+  async function loadMessages() {
+    if (!currentToken) return;
+    try {
+      const res = await fetch(`${API}/api/messages/${currentToken}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      messages = data.messages || [];
+      document.getElementById('msgCount').textContent = messages.length;
+      renderInbox();
+    } catch(e) {}
+  }
+
+  function renderInbox() {
+    const el = document.getElementById('inbox');
+    if (!messages.length) {
+      el.innerHTML = '<div class="inbox-empty"><div class="ico">✉</div><div>Esperando mensajes...</div></div>';
+      return;
+    }
+    el.innerHTML = messages.map((m, i) => `
+      <div class="msg-item" onclick="viewMsg(${i})">
+        <div class="msg-row">
+          <span class="msg-from">${esc(m.from_address || 'Desconocido')}</span>
+          <span class="msg-date">${formatDate(m.received_at)}</span>
+        </div>
+        <div class="msg-subject">${esc(m.subject || '(sin asunto)')}</div>
+      </div>
+    `).join('');
+  }
+
+  function viewMsg(i) {
+    const m = messages[i];
+    const view = document.getElementById('msgView');
+    view.style.display = 'block';
+    view.innerHTML = `
+      <button class="back-btn" onclick="closeMsg()">← Volver</button>
+      <div class="msg-view">
+        <div class="msg-view-subject">${esc(m.subject || '(sin asunto)')}</div>
+        <div class="msg-view-meta">De: ${esc(m.from_address || '?')} &nbsp;|&nbsp; ${formatDate(m.received_at)}</div>
+        <div class="msg-view-body">${esc(m.body || '(sin contenido)')}</div>
+      </div>
+    `;
+    view.scrollIntoView({behavior: 'smooth'});
+  }
+
+  function closeMsg() {
+    document.getElementById('msgView').style.display = 'none';
+  }
+
+  async function deleteAccount() {
+    if (!confirm('¿Eliminar este correo temporal?')) return;
+    await fetch(`${API}/api/delete/${currentToken}`, {method: 'DELETE'});
+    localStorage.removeItem('tempemail_token');
+    currentToken = null;
+    clearInterval(pollingInterval);
+    showCreate();
+  }
+
+  function showCreate() {
+    document.getElementById('createCard').style.display = 'block';
+    document.getElementById('emailDisplay').classList.remove('show');
+  }
+
+  function copyEmail() {
+    const addr = document.getElementById('emailAddr').textContent;
+    navigator.clipboard.writeText(addr).then(() => {
+      const btn = event.target;
+      btn.textContent = '¡Copiado!';
+      btn.style.color = '#00e5a0';
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.style.color = ''; }, 1500);
+    });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString('es', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  }
+
+  // Recuperar sesión guardada
+  const saved = localStorage.getItem('tempemail_token');
+  if (saved) {
+    currentToken = saved;
+    fetch(`${API}/api/messages/${saved}`).then(r => r.json()).then(data => {
+      if (data.email) {
+        document.getElementById('emailAddr').textContent = data.email;
+        document.getElementById('expiryText').textContent = `Expira: ${formatDate(data.expires_at)}`;
+        document.getElementById('createCard').style.display = 'none';
+        document.getElementById('emailDisplay').classList.add('show');
+        messages = data.messages || [];
+        document.getElementById('msgCount').textContent = messages.length;
+        renderInbox();
+        pollingInterval = setInterval(loadMessages, 15000);
+      }
+    }).catch(() => localStorage.removeItem('tempemail_token'));
+  }
+</script>
+</body>
+</html>

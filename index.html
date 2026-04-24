@@ -1,56 +1,159 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>TempMail PRO</title>
+<meta charset="UTF-8">
+<title>Temp Mail</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.container {
+    width: 420px;
+    background: #111827;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+button {
+    padding: 10px;
+    width: 100%;
+    margin-top: 10px;
+    background: #2563eb;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+.email-box {
+    background: #1f2937;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.inbox {
+    margin-top: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.msg {
+    background: #1f2937;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+}
+
+.small {
+    font-size: 12px;
+    color: #9ca3af;
+}
+</style>
 </head>
-<body style="font-family:Arial">
 
-<h2>🔥 TempMail Generator</h2>
+<body>
 
-<input id="name" placeholder="nombre base">
-<button onclick="create()">Crear correo</button>
+<div class="container">
 
-<hr>
+<h2>📧 Temp Mail</h2>
 
-<h3>Email:</h3>
-<p id="email"></p>
+<button onclick="createEmail()">Crear correo temporal</button>
 
-<h3>Token:</h3>
-<p id="token"></p>
+<div id="emailContainer" style="display:none;">
+    <div class="email-box">
+        <span id="email"></span>
+        <button onclick="copyEmail()" style="width:auto;">Copiar</button>
+    </div>
 
-<button onclick="load()">Ver mensajes</button>
+    <p class="small">Tu inbox se actualiza automático</p>
 
-<pre id="messages"></pre>
+    <div class="inbox" id="inbox"></div>
+</div>
+
+</div>
 
 <script>
 
-let TOKEN = "";
+let currentEmail = "";
 
-async function create(){
+// ======================
+// CREAR EMAIL
+// ======================
+async function createEmail() {
 
-    let name = document.getElementById("name").value;
-
-    let res = await fetch("http://localhost:8000/api/create", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({name})
+    const res = await fetch("https://TU-BACKEND.onrender.com/api/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration: "1d" })
     });
 
-    let data = await res.json();
+    const data = await res.json();
 
-    document.getElementById("email").innerText = data.email;
-    document.getElementById("token").innerText = data.token;
+    currentEmail = data.email;
 
-    TOKEN = data.token;
+    document.getElementById("email").innerText = currentEmail;
+    document.getElementById("emailContainer").style.display = "block";
+
+    loadInbox();
+    setInterval(loadInbox, 5000);
 }
 
-async function load(){
+// ======================
+// COPIAR EMAIL
+// ======================
+function copyEmail() {
+    navigator.clipboard.writeText(currentEmail);
+    alert("Email copiado");
+}
 
-    let res = await fetch("http://localhost:8000/api/messages/" + TOKEN);
-    let data = await res.json();
+// ======================
+// CARGAR INBOX
+// ======================
+async function loadInbox() {
 
-    document.getElementById("messages").innerText =
-        JSON.stringify(data, null, 2);
+    if (!currentEmail) return;
+
+    const res = await fetch(`https://TU-BACKEND.onrender.com/api/messages/${currentEmail}`);
+
+    const data = await res.json();
+
+    const inbox = document.getElementById("inbox");
+    inbox.innerHTML = "";
+
+    if (!data.messages || data.messages.length === 0) {
+        inbox.innerHTML = "<p class='small'>Sin mensajes...</p>";
+        return;
+    }
+
+    data.messages.forEach(msg => {
+
+        const div = document.createElement("div");
+        div.className = "msg";
+
+        div.innerHTML = `
+            <b>${msg.subject || "Sin asunto"}</b><br>
+            <span class="small">De: ${msg.from_address}</span><br><br>
+            ${msg.body || ""}
+        `;
+
+        inbox.appendChild(div);
+    });
 }
 
 </script>

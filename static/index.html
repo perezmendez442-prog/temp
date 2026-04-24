@@ -1,119 +1,88 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>TempMail</title>
+<title>TempMail Real</title>
 
 <style>
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #0f0f0f;
-    color: white;
+    margin:0;
+    font-family:Arial;
+    background:#0f0f0f;
+    color:white;
 }
 
 .header {
-    background: #111;
-    padding: 15px;
-    font-size: 20px;
-    text-align: center;
-    font-weight: bold;
+    background:#111;
+    padding:15px;
+    text-align:center;
+    font-size:20px;
 }
 
 .container {
-    display: flex;
-    gap: 20px;
-    padding: 20px;
+    display:flex;
+    gap:20px;
+    padding:20px;
 }
 
-/* LEFT PANEL */
-.left {
-    width: 35%;
-    background: #1a1a1a;
-    padding: 15px;
-    border-radius: 10px;
+.left, .right {
+    background:#1a1a1a;
+    padding:15px;
+    border-radius:10px;
 }
+
+.left { width:30%; }
+.right { width:70%; }
 
 button {
-    width: 100%;
-    padding: 10px;
-    background: #2563eb;
-    border: none;
-    color: white;
-    margin-top: 10px;
-    cursor: pointer;
-    border-radius: 6px;
+    width:100%;
+    padding:10px;
+    background:#2563eb;
+    border:none;
+    color:white;
+    margin-top:10px;
+    cursor:pointer;
 }
 
-select {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
+.email {
+    background:black;
+    padding:10px;
+    margin-top:10px;
+    word-break:break-all;
 }
 
-/* EMAIL BOX */
-.email-box {
-    background: #000;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 6px;
-    word-break: break-all;
-}
-
-/* RIGHT PANEL */
-.right {
-    width: 65%;
-    background: #1a1a1a;
-    padding: 15px;
-    border-radius: 10px;
-}
-
-.message {
-    background: #000;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 6px;
-}
-
-.subject {
-    font-weight: bold;
-    color: #60a5fa;
+.msg {
+    background:black;
+    padding:10px;
+    margin-bottom:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-📧 TEMP MAIL SYSTEM
-</div>
+<div class="header">📧 TempMail Pro System</div>
 
 <div class="container">
 
-<!-- LEFT -->
 <div class="left">
 
-<h3>Crear correo temporal</h3>
-
 <select id="duration">
-    <option value="1h">1 hora</option>
-    <option value="1d">1 día</option>
-    <option value="1w">1 semana</option>
-    <option value="1m">1 mes</option>
-    <option value="6m">6 meses</option>
+<option value="1h">1h</option>
+<option value="1d">1d</option>
+<option value="1w">1w</option>
+<option value="1m">1m</option>
+<option value="6m">6m</option>
 </select>
 
-<button onclick="createEmail()">Crear Email</button>
+<button onclick="createEmail()">Crear correo</button>
 
-<div class="email-box" id="emailBox">
-    No creado aún
-</div>
+<div class="email" id="email">---</div>
 
 </div>
 
-<!-- RIGHT -->
 <div class="right">
-<h3>📥 Inbox</h3>
+<h3>Inbox</h3>
 <div id="inbox">Sin mensajes</div>
 </div>
 
@@ -126,8 +95,8 @@ let token = null;
 async function createEmail() {
 
     const res = await fetch("/api/create", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
             duration: document.getElementById("duration").value
         })
@@ -135,34 +104,34 @@ async function createEmail() {
 
     const data = await res.json();
 
-    document.getElementById("emailBox").innerText = data.email;
+    document.getElementById("email").innerText = data.email;
 
     token = data.token;
 
-    loadMessages();
+    loadInbox();
 
-    setInterval(loadMessages, 4000);
+    setInterval(loadInbox, 4000);
 }
 
-async function loadMessages() {
+async function loadInbox() {
 
-    if (!token) return;
+    if(!token) return;
 
     const res = await fetch("/api/messages/" + token);
     const data = await res.json();
 
-    let html = "";
-
-    if (!data.messages || data.messages.length === 0) {
+    if(!data.messages.length){
         document.getElementById("inbox").innerHTML = "Sin mensajes";
         return;
     }
 
+    let html = "";
+
     data.messages.forEach(m => {
         html += `
-        <div class="message">
-            <div class="subject">${m.subject || "Sin asunto"}</div>
-            <div>${m.body || ""}</div>
+        <div class="msg">
+            <b>${m.subject || "Sin asunto"}</b><br>
+            ${m.body || ""}
         </div>`;
     });
 

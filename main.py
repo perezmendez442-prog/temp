@@ -142,7 +142,6 @@ def delete_account(token: str):
 def health():
     return {"status": "ok"}
 
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

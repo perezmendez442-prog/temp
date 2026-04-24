@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from supabase import create_client
 from datetime import datetime, timedelta
 import uuid
@@ -19,16 +20,30 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 DOMAIN = os.getenv("DOMAIN", "tempemail25.chickenkiller.com")
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise Exception("Falta SUPABASE_URL o SUPABASE_KEY en variables de entorno")
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-@app.get("/")
-def root():
-    return {"status": "online"}
+# =========================
+# FRONTEND (ESTO ES LO QUE TE FALTABA)
+# =========================
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
+# =========================
+# API HEALTH
+# =========================
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "tempmail-pro"}
 
+@app.get("/api/ping")
+def ping():
+    return {"ping": "pong", "time": datetime.utcnow().isoformat()}
+
+# =========================
+# CREAR EMAIL TEMP
+# =========================
 @app.post("/api/create")
 def create_email():
     email = f"{uuid.uuid4().hex[:10]}@{DOMAIN}"
@@ -46,11 +61,17 @@ def create_email():
         "expires_at": expires.isoformat()
     }
 
+# =========================
+# LISTAR CUENTAS
+# =========================
 @app.get("/api/accounts")
 def get_accounts():
     res = supabase.table("accounts").select("*").execute()
     return res.data
 
+# =========================
+# INBOX
+# =========================
 @app.get("/api/inbox/{email}")
 def inbox(email: str):
     res = supabase.table("messages") \
@@ -64,6 +85,9 @@ def inbox(email: str):
         "messages": res.data
     }
 
+# =========================
+# BORRAR CUENTA
+# =========================
 @app.delete("/api/delete/{email}")
 def delete_account(email: str):
     supabase.table("messages").delete().eq("email", email).execute()
@@ -71,6 +95,9 @@ def delete_account(email: str):
 
     return {"deleted": email}
 
+# =========================
+# RECEPCIÓN DE EMAILS (INBOUND)
+# =========================
 @app.post("/api/inbound")
 async def inbound(request: Request):
     data = await request.json()
@@ -91,11 +118,17 @@ async def inbound(request: Request):
 
     return {"status": "received"}
 
+# =========================
+# CONTAR MENSAJES
+# =========================
 @app.get("/api/messages/count/{email}")
 def count_messages(email: str):
     res = supabase.table("messages").select("*").eq("email", email).execute()
     return {"email": email, "count": len(res.data)}
 
+# =========================
+# ÚLTIMO MENSAJE
+# =========================
 @app.get("/api/latest/{email}")
 def latest_message(email: str):
     res = supabase.table("messages") \
@@ -110,6 +143,9 @@ def latest_message(email: str):
 
     return res.data[0]
 
+# =========================
+# REFRESH INBOX
+# =========================
 @app.post("/api/refresh/{email}")
 def refresh(email: str):
     res = supabase.table("messages") \
@@ -123,6 +159,9 @@ def refresh(email: str):
         "messages": res.data
     }
 
+# =========================
+# BUSCAR MENSAJES
+# =========================
 @app.get("/api/search/{email}/{keyword}")
 def search(email: str, keyword: str):
     res = supabase.table("messages") \
@@ -142,6 +181,9 @@ def search(email: str, keyword: str):
         "results": filtered
     }
 
+# =========================
+# LIMPIEZA
+# =========================
 @app.post("/api/cleanup")
 def cleanup():
     now = datetime.utcnow().isoformat()
@@ -157,6 +199,9 @@ def cleanup():
 
     return {"deleted_accounts": len(expired.data)}
 
+# =========================
+# ESTADÍSTICAS
+# =========================
 @app.get("/api/stats")
 def stats():
     accounts = supabase.table("accounts").select("*").execute()
@@ -167,10 +212,9 @@ def stats():
         "total_messages": len(messages.data)
     }
 
-@app.get("/api/ping")
-def ping():
-    return {"ping": "pong", "time": datetime.utcnow().isoformat()}
-
+# =========================
+# TEST INBOUND
+# =========================
 @app.post("/api/test-inbound")
 def test_inbound():
     supabase.table("messages").insert({

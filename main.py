@@ -5,164 +5,114 @@ from datetime import datetime, timedelta
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from dotenv import load_dotenv
 from supabase import create_client
+from dotenv import load_dotenv
 
-# =====================
-# ENV
-# =====================
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-DOMAIN = os.getenv("DOMAIN", "tempemail25.chickenkiller.com")
+DOMAIN = os.getenv("DOMAIN", "tempmail.local")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Falta SUPABASE_URL o SUPABASE_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# =====================
-# APP
-# =====================
 app = FastAPI()
 
+# CORS (OBLIGATORIO)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# =====================
-# DURACIONES
-# =====================
-DURATIONS = {
-    "1h": timedelta(hours=1),
-    "1d": timedelta(days=1),
-    "1w": timedelta(weeks=1),
-    "1m": timedelta(days=30),
-    "6m": timedelta(days=180),
-}
+# FRONTEND SERVIDO DESDE FASTAPI
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
-# =====================
-# UTILS
-# =====================
-def random_username(length=10):
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-# =====================
-# MODELS
-# =====================
-class CreateAccountRequest(BaseModel):
+# =========================
+# MODELOS
+# =========================
+class CreateRequest(BaseModel):
     duration: str
 
-class SendMessageRequest(BaseModel):
-    email: str
-    from_address: str
-    subject: str
-    body: str
 
-# =====================
-# CREATE TEMP EMAIL
-# =====================
+DURATIONS = {
+    "1h": 1,
+    "1d": 1,
+    "1w": 7,
+    "1m": 30,
+    "6m": 180
+}
+
+
+# =========================
+# GENERAR EMAIL
+# =========================
+def gen_email():
+    name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    return f"{name}@{DOMAIN}"
+
+
+# =========================
+# CREAR CUENTA
+# =========================
 @app.post("/api/create")
-def create_account(req: CreateAccountRequest):
+def create(req: CreateRequest):
+
     if req.duration not in DURATIONS:
         raise HTTPException(status_code=400, detail="Duración inválida")
 
-    username = random_username()
-    email_addr = f"{username}@{DOMAIN}"
-    expires_at = (datetime.utcnow() + DURATIONS[req.duration]).isoformat()
+    email_addr = gen_email()
     token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+
+    expires = datetime.utcnow() + timedelta(days=DURATIONS[req.duration])
 
     supabase.table("accounts").insert({
         "email": email_addr,
         "token": token,
         "duration": req.duration,
-        "expires_at": expires_at,
+        "expires_at": expires.isoformat()
     }).execute()
 
     return {
         "email": email_addr,
-        "token": token,
-        "expires_at": expires_at
+        "token": token
     }
 
-# =====================
-# SEND MESSAGE (SIMULA RECEPCIÓN REAL)
-# =====================
-@app.post("/api/send")
-def send_message(req: SendMessageRequest):
-    account = supabase.table("accounts").select("*").eq("email", req.email).execute()
 
-    if not account.data:
-        raise HTTPException(status_code=404, detail="Email no existe")
-
-    acc = account.data[0]
-
-    if datetime.fromisoformat(acc["expires_at"]) < datetime.utcnow():
-        raise HTTPException(status_code=410, detail="Email expirado")
-
-    supabase.table("messages").insert({
-        "account_email": req.email,
-        "from_address": req.from_address,
-        "subject": req.subject,
-        "body": req.body,
-        "received_at": datetime.utcnow().isoformat()
-    }).execute()
-
-    return {"status": "mensaje guardado"}
-
-# =====================
-# GET INBOX
-# =====================
+# =========================
+# INBOX
+# =========================
 @app.get("/api/messages/{token}")
-def get_messages(token: str):
-    account = supabase.table("accounts").select("*").eq("token", token).execute()
+def inbox(token: str):
 
-    if not account.data:
-        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    acc = supabase.table("accounts").select("*").eq("token", token).execute()
 
-    acc = account.data[0]
+    if not acc.data:
+        raise HTTPException(status_code=404, detail="No existe")
 
-    if datetime.fromisoformat(acc["expires_at"]) < datetime.utcnow():
-        raise HTTPException(status_code=410, detail="Correo expirado")
+    account = acc.data[0]
 
-    messages = supabase.table("messages") \
+    msgs = supabase.table("messages") \
         .select("*") \
-        .eq("account_email", acc["email"]) \
+        .eq("account_email", account["email"]) \
         .order("received_at", desc=True) \
         .execute()
 
     return {
-        "email": acc["email"],
-        "expires_at": acc["expires_at"],
-        "messages": messages.data
+        "email": account["email"],
+        "messages": msgs.data
     }
 
-# =====================
-# DELETE ACCOUNT
-# =====================
-@app.delete("/api/account/{token}")
-def delete_account(token: str):
-    account = supabase.table("accounts").select("*").eq("token", token).execute()
 
-    if not account.data:
-        raise HTTPException(status_code=404, detail="No existe")
-
-    supabase.table("accounts").delete().eq("token", token).execute()
-
-    return {"message": "eliminado"}
-
-# =====================
-# HEALTH
-# =====================
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "temp mail api"}
 
 @app.get("/api/health")
 def health():
-    return {"status": "running"}
+    return {"status": "ok"}

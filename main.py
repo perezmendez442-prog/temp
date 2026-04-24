@@ -15,9 +15,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv("https://nqoxfnofeoaltjxilkmv.supabase.com")
-SUPABASE_KEY = os.getenv("nqoxfnofeoaltjxilkmv")
+# ✅ VARIABLES DE ENTORNO CORRECTAS
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 DOMAIN = os.getenv("DOMAIN", "tempemail25.chickenkiller.com")
+
+# 🔥 Validación (evita errores silenciosos)
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise Exception("Faltan variables de entorno SUPABASE_URL o SUPABASE_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -58,7 +63,6 @@ class EmailHandler(AsyncMessage):
             else:
                 body = message.get_payload(decode=True).decode('utf-8', errors='ignore')
 
-            # Verificar que la cuenta exista y no haya expirado
             result = supabase.table('accounts').select('*').eq('email', to_addr).execute()
             if not result.data:
                 return
@@ -78,7 +82,7 @@ class EmailHandler(AsyncMessage):
         except Exception as e:
             print(f"Error procesando email: {e}")
 
-# --- API Routes ---
+# --- API ---
 class CreateAccountRequest(BaseModel):
     duration: str
 
@@ -138,15 +142,11 @@ def delete_account(token: str):
 def health():
     return {"status": "ok"}
 
-# --- Main ---
-async def start_smtp():
-    handler = EmailHandler()
-    controller = Controller(handler, hostname='0.0.0.0', port=25)
-    controller.start()
-    print(f"Servidor SMTP corriendo en puerto 25")
-    print(f"Dominio: {DOMAIN}")
-
+# --- MAIN ---
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_smtp())
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 10000))  # ✅ Render usa este puerto
+
+    # ⚠️ SMTP desactivado en Render (puerto 25 no permitido)
+    # asyncio.run(start_smtp())
+
+    uvicorn.run(app, host="0.0.0.0", port=port)

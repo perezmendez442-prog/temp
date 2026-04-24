@@ -142,11 +142,16 @@ def delete_account(token: str):
 def health():
     return {"status": "ok"}
 
-# --- MAIN ---
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # ✅ Render usa este puerto
+import os
 
-    # ⚠️ SMTP desactivado en Render (puerto 25 no permitido)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+
+    # ⚠️ NO iniciar SMTP en Render
     # asyncio.run(start_smtp())
 
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+    uvicorn.run(app, host="0.0.0.0", port=port)
+    # loop = asyncio.get_event_loop()
+# loop.run_until_complete(start_smtp())

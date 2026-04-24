@@ -1,3 +1,6 @@
 fastapi
 uvicorn
 requests
+supabase
+python-dotenv
+pydantic

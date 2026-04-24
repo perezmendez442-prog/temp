@@ -2,30 +2,47 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Temp Mail</title>
+<title>TempMail Pro</title>
 
 <style>
 body {
+    margin: 0;
     font-family: Arial;
-    background: #0f172a;
+    background: #0b1220;
     color: white;
     display: flex;
     justify-content: center;
-    padding: 40px;
+    padding: 30px;
 }
 
 .container {
-    width: 420px;
+    width: 500px;
     background: #111827;
-    padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    padding: 20px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.5);
+}
+
+h2 {
+    text-align: center;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+input, select {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
 }
 
 button {
-    padding: 10px;
-    width: 100%;
-    margin-top: 10px;
+    padding: 12px;
     background: #2563eb;
     border: none;
     color: white;
@@ -38,9 +55,9 @@ button:hover {
 }
 
 .email-box {
+    margin-top: 20px;
     background: #1f2937;
     padding: 10px;
-    margin-top: 10px;
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
@@ -49,15 +66,15 @@ button:hover {
 
 .inbox {
     margin-top: 15px;
-    max-height: 300px;
+    max-height: 350px;
     overflow-y: auto;
 }
 
 .msg {
     background: #1f2937;
     padding: 10px;
-    margin-bottom: 8px;
     border-radius: 8px;
+    margin-bottom: 10px;
 }
 
 .small {
@@ -71,44 +88,57 @@ button:hover {
 
 <div class="container">
 
-<h2>📧 Temp Mail</h2>
+<h2>📧 TempMail Pro</h2>
 
-<button onclick="createEmail()">Crear correo temporal</button>
+<!-- CREAR CORREO -->
+<div class="row">
+    <select id="duration">
+        <option value="1h">1 Hora</option>
+        <option value="1d">1 Día</option>
+        <option value="1w">1 Semana</option>
+        <option value="1m">1 Mes</option>
+        <option value="6m">6 Meses</option>
+    </select>
 
-<div id="emailContainer" style="display:none;">
-    <div class="email-box">
-        <span id="email"></span>
-        <button onclick="copyEmail()" style="width:auto;">Copiar</button>
-    </div>
-
-    <p class="small">Tu inbox se actualiza automático</p>
-
-    <div class="inbox" id="inbox"></div>
+    <button onclick="createEmail()">Crear correo</button>
 </div>
+
+<!-- EMAIL GENERADO -->
+<div id="emailBox" class="email-box" style="display:none;">
+    <span id="emailText"></span>
+    <button onclick="copyEmail()" style="width:auto;">Copiar</button>
+</div>
+
+<!-- INBOX -->
+<div class="inbox" id="inbox"></div>
 
 </div>
 
 <script>
 
 let currentEmail = "";
+let token = "";
 
 // ======================
 // CREAR EMAIL
 // ======================
 async function createEmail() {
 
+    const duration = document.getElementById("duration").value;
+
     const res = await fetch("https://TU-BACKEND.onrender.com/api/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ duration: "1d" })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ duration })
     });
 
     const data = await res.json();
 
     currentEmail = data.email;
+    token = data.token;
 
-    document.getElementById("email").innerText = currentEmail;
-    document.getElementById("emailContainer").style.display = "block";
+    document.getElementById("emailText").innerText = currentEmail;
+    document.getElementById("emailBox").style.display = "flex";
 
     loadInbox();
     setInterval(loadInbox, 5000);
@@ -119,25 +149,24 @@ async function createEmail() {
 // ======================
 function copyEmail() {
     navigator.clipboard.writeText(currentEmail);
-    alert("Email copiado");
+    alert("Copiado");
 }
 
 // ======================
-// CARGAR INBOX
+// INBOX
 // ======================
 async function loadInbox() {
 
     if (!currentEmail) return;
 
-    const res = await fetch(`https://TU-BACKEND.onrender.com/api/messages/${currentEmail}`);
-
+    const res = await fetch(`https://TU-BACKEND.onrender.com/api/messages/${token}`);
     const data = await res.json();
 
     const inbox = document.getElementById("inbox");
     inbox.innerHTML = "";
 
     if (!data.messages || data.messages.length === 0) {
-        inbox.innerHTML = "<p class='small'>Sin mensajes...</p>";
+        inbox.innerHTML = "<p class='small'>📭 Sin mensajes aún...</p>";
         return;
     }
 

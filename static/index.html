@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TempMail</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f0f0f;
+    color: white;
+}
+
+.header {
+    background: #111;
+    padding: 15px;
+    font-size: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* LEFT PANEL */
+.left {
+    width: 35%;
+    background: #1a1a1a;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #2563eb;
+    border: none;
+    color: white;
+    margin-top: 10px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+/* EMAIL BOX */
+.email-box {
+    background: #000;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+/* RIGHT PANEL */
+.right {
+    width: 65%;
+    background: #1a1a1a;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.message {
+    background: #000;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+}
+
+.subject {
+    font-weight: bold;
+    color: #60a5fa;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+📧 TEMP MAIL SYSTEM
+</div>
+
+<div class="container">
+
+<!-- LEFT -->
+<div class="left">
+
+<h3>Crear correo temporal</h3>
+
+<select id="duration">
+    <option value="1h">1 hora</option>
+    <option value="1d">1 día</option>
+    <option value="1w">1 semana</option>
+    <option value="1m">1 mes</option>
+    <option value="6m">6 meses</option>
+</select>
+
+<button onclick="createEmail()">Crear Email</button>
+
+<div class="email-box" id="emailBox">
+    No creado aún
+</div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+<h3>📥 Inbox</h3>
+<div id="inbox">Sin mensajes</div>
+</div>
+
+</div>
+
+<script>
+
+let token = null;
+
+async function createEmail() {
+
+    const res = await fetch("/api/create", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            duration: document.getElementById("duration").value
+        })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("emailBox").innerText = data.email;
+
+    token = data.token;
+
+    loadMessages();
+
+    setInterval(loadMessages, 4000);
+}
+
+async function loadMessages() {
+
+    if (!token) return;
+
+    const res = await fetch("/api/messages/" + token);
+    const data = await res.json();
+
+    let html = "";
+
+    if (!data.messages || data.messages.length === 0) {
+        document.getElementById("inbox").innerHTML = "Sin mensajes";
+        return;
+    }
+
+    data.messages.forEach(m => {
+        html += `
+        <div class="message">
+            <div class="subject">${m.subject || "Sin asunto"}</div>
+            <div>${m.body || ""}</div>
+        </div>`;
+    });
+
+    document.getElementById("inbox").innerHTML = html;
+}
+
+</script>
+
+</body>
+</html>
